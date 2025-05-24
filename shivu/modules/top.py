@@ -17,6 +17,9 @@ HEADER_SMALL_CAPS = "ᴛᴏᴘ ᴜꜱᴇʀꜱ ᴡɪᴛʜ ᴍᴏꜱᴛ ᴄʜᴀʀ
 
 
 async def build_leaderboard_text(offset: int = 0) -> str:
+    # Ensure offset is not negative
+    offset = max(0, offset)
+    
     cursor = user_collection.aggregate([
         {"$project": {
             "username": 1,
@@ -34,32 +37,42 @@ async def build_leaderboard_text(offset: int = 0) -> str:
 
     lines = []
     for i, user in enumerate(leaderboard_data, start=offset + 1):
-        username = user.get("username", "Unknown")
+        username = user.get("username")
         first_name = html.escape(user.get("first_name", "Unknown"))
         if len(first_name) > 15:
             first_name = first_name[:15] + "..."
         character_count = user["character_count"]
-        lines.append(
-            f'{i}. <a href="https://t.me/{username}"><b>{first_name}</b></a> ➾ <b>{character_count}</b>'
-        )
+        
+        # Handle users without username
+        if username:
+            line = f'{i}. <a href="https://t.me/{username}"><b>{first_name}</b></a> ➾ <b>{character_count}</b>'
+        else:
+            line = f'{i}. <b>{first_name}</b> ➾ <b>{character_count}</b>'
+        
+        lines.append(line)
 
     return f"<b>{HEADER_SMALL_CAPS}</b>" + "\n".join(lines)
 
 
 def build_buttons(offset: int) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup([
+    buttons = [
         [
             InlineKeyboardButton("⟳ Refresh", callback_data=f"leaderboard_users_{offset}"),
             InlineKeyboardButton("⌕ Find", callback_data="leaderboard_users_find")
         ],
         [
-            InlineKeyboardButton("⌫ Clear", callback_data="leaderboard_users_clear"),
-            InlineKeyboardButton("⟶ Next", callback_data=f"leaderboard_users_{offset + PAGE_SIZE}")
-        ],
-        [
-            InlineKeyboardButton("« Prev", callback_data=f"leaderboard_users_{max(0, offset - PAGE_SIZE)}")
+            InlineKeyboardButton("⌫ Clear", callback_data="leaderboard_users_clear")
         ]
-    ])
+    ]
+    
+    # Add Next button only if there might be more results
+    if offset > 0:
+        buttons[1].insert(0, InlineKeyboardButton("« Prev", callback_data=f"leaderboard_users_{max(0, offset - PAGE_SIZE)}"))
+    
+    # Always show Next button (we'll handle empty results in the callback)
+    buttons[1].append(InlineKeyboardButton("⟶ Next", callback_data=f"leaderboard_users_{offset + PAGE_SIZE}"))
+    
+    return InlineKeyboardMarkup(buttons)
 
 
 @shivuu.on_message(filters.command("top"))
@@ -104,8 +117,10 @@ async def leaderboard_callback(_, query: CallbackQuery):
                 media=InputMediaPhoto(media=IMAGE_URL, caption=text, parse_mode="html"),
                 reply_markup=buttons
             )
-        except Exception:
-            await query.message.reply_text("Timeout or error occurred. Try again.")
+        except TimeoutError:
+            await query.message.reply_text("Timed out waiting for response. Please try again.")
+        except Exception as e:
+            await query.message.reply_text(f"An error occurred: {str(e)}")
         return
 
     if data == "leaderboard_users_clear":
@@ -113,11 +128,20 @@ async def leaderboard_callback(_, query: CallbackQuery):
         return
 
     # Handle pagination and refresh
-    offset = int(data.rsplit("_", 1)[-1])
-    text = await build_leaderboard_text(offset)
-    buttons = build_buttons(offset)
+    try:
+        offset = int(data.rsplit("_", 1)[-1])
+        text = await build_leaderboard_text(offset)
+        
+        # Check if we got any results
+        if "No more users to show" in text and offset > 0:
+            offset = max(0, offset - PAGE_SIZE)
+            text = await build_leaderboard_text(offset)
+            
+        buttons = build_buttons(offset)
 
-    await query.message.edit_media(
-        media=InputMediaPhoto(media=IMAGE_URL, caption=text, parse_mode="html"),
-        reply_markup=buttons
-    )
+        await query.message.edit_media(
+            media=InputMediaPhoto(media=IMAGE_URL, caption=text, parse_mode="html"),
+            reply_markup=buttons
+        )
+    except Exception as e:
+        await query.answer(f"Error: {str(e)}", show_alert=True)
