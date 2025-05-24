@@ -1,18 +1,13 @@
 import html
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
-from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery, InputMediaPhoto
 from pyromod import listen
 
-from shivu import user_collection, application
+from shivu import user_collection, shivuu  # your pyrogram.Client instance is shivuu
 
-# Constants
 IMAGE_URL = "https://i.ibb.co/Zpcqv2p3/tmpepyoc31z.jpg"
 PAGE_SIZE = 10
 
-# Leaderboard Header
-HEADER_SMALL_CAPS = (
-    "ᴛᴏᴘ ᴜꜱᴇʀꜱ ᴡɪᴛʜ ᴍᴏꜱᴛ ᴄʜᴀʀᴀᴄᴛᴇʀꜱ\n\n"
-)
+HEADER_SMALL_CAPS = "ᴛᴏᴘ ᴜꜱᴇʀꜱ ᴡɪᴛʜ ᴍᴏꜱᴛ ᴄʜᴀʀᴀᴄᴛᴇʀꜱ\n\n"
 
 
 async def build_leaderboard_text(offset: int = 0) -> str:
@@ -46,7 +41,7 @@ async def build_leaderboard_text(offset: int = 0) -> str:
 
 
 def build_buttons(offset: int) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup([
+    buttons = [
         [
             InlineKeyboardButton("⟳ Refresh", callback_data=f"leaderboard_users_{offset}"),
             InlineKeyboardButton("⌕ Find", callback_data="leaderboard_users_find")
@@ -58,85 +53,71 @@ def build_buttons(offset: int) -> InlineKeyboardMarkup:
         [
             InlineKeyboardButton("« Prev", callback_data=f"leaderboard_users_{max(0, offset - PAGE_SIZE)}")
         ]
-    ])
+    ]
+    return InlineKeyboardMarkup(buttons)
 
 
-async def leaderboard_command(update, context: ContextTypes.DEFAULT_TYPE):
+@shivuu.on_message(filters.command("top"))
+async def leaderboard_command(client, message):
     offset = 0
     text = await build_leaderboard_text(offset)
     buttons = build_buttons(offset)
 
-    await update.message.reply_photo(
+    await message.reply_photo(
         photo=IMAGE_URL,
         caption=text,
-        parse_mode="HTML",
+        parse_mode="html",
         reply_markup=buttons
     )
 
 
-async def find_rank_handler(update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    await query.message.reply_text("Please enter the rank number you want to find (e.g. 15):")
-
-    try:
-        response = await context.bot.listen(update.effective_chat.id, timeout=30)
-        rank_text = response.text.strip()
-
-        if not rank_text.isdigit():
-            await query.message.reply_text("Invalid input. Please enter a valid number.")
-            return
-
-        rank = int(rank_text)
-        if rank < 1:
-            await query.message.reply_text("Rank must be greater than 0.")
-            return
-
-        offset = ((rank - 1) // PAGE_SIZE) * PAGE_SIZE
-        text = await build_leaderboard_text(offset)
-        buttons = build_buttons(offset)
-
-        await query.message.edit_media(
-            media=InputMediaPhoto(media=IMAGE_URL, caption=text, parse_mode="HTML"),
-            reply_markup=buttons
-        )
-
-    except Exception:
-        await query.message.reply_text("Timeout or error occurred. Please try again.")
-
-
-async def clear_handler(update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    await query.message.edit_caption(caption="Leaderboard cleared.")
-
-
-async def leaderboard_callback(update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    data = query.data
+@shivuu.on_callback_query(filters.regex(r"^leaderboard_users(_find|_clear|_\d+)$"))
+async def leaderboard_callback(client, callback_query: CallbackQuery):
+    await callback_query.answer()
+    data = callback_query.data
 
     if data == "leaderboard_users_find":
-        return await find_rank_handler(update, context)
+        await callback_query.message.reply_text("Please enter the rank number you want to find (e.g. 15):")
+
+        try:
+            response = await client.listen(callback_query.message.chat.id, timeout=30)
+            rank_text = response.text.strip()
+
+            if not rank_text.isdigit():
+                await callback_query.message.reply_text("Invalid input. Please enter a valid number.")
+                return
+
+            rank = int(rank_text)
+            if rank < 1:
+                await callback_query.message.reply_text("Rank must be greater than 0.")
+                return
+
+            offset = ((rank - 1) // PAGE_SIZE) * PAGE_SIZE
+            text = await build_leaderboard_text(offset)
+            buttons = build_buttons(offset)
+
+            await callback_query.message.edit_media(
+                media=InputMediaPhoto(media=IMAGE_URL, caption=text, parse_mode="html"),
+                reply_markup=buttons
+            )
+        except Exception:
+            await callback_query.message.reply_text("Timeout or error occurred. Please try again.")
+
+        return
 
     if data == "leaderboard_users_clear":
-        return await clear_handler(update, context)
+        # Delete entire message as requested
+        await callback_query.message.delete()
+        return
 
+    # Pagination handler
     parts = data.split("_")
     offset = int(parts[-1]) if parts[-1].isdigit() else 0
 
     text = await build_leaderboard_text(offset)
     buttons = build_buttons(offset)
 
-    await query.message.edit_media(
-        media=InputMediaPhoto(media=IMAGE_URL, caption=text, parse_mode="HTML"),
+    await callback_query.message.edit_media(
+        media=InputMediaPhoto(media=IMAGE_URL, caption=text, parse_mode="html"),
         reply_markup=buttons
     )
-
-
-# Register handlers
-application.add_handler(CommandHandler("top", leaderboard_command))
-application.add_handler(
-    CallbackQueryHandler(leaderboard_callback, pattern=r"^leaderboard_users(_find|_clear|_\d+)$")
-)
