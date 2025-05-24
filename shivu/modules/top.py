@@ -1,9 +1,15 @@
 import html
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery, InputMediaPhoto
-from pyromod import listen
 from pyrogram import filters
+from pyrogram.types import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    CallbackQuery,
+    InputMediaPhoto,
+)
+from pyromod import listen
 
-from shivu import user_collection, shivuu  # your pyrogram.Client instance is shivuu
+from shivu import user_collection, shivuu  # your pyrogram.Client instance
+
 
 IMAGE_URL = "https://i.ibb.co/Zpcqv2p3/tmpepyoc31z.jpg"
 PAGE_SIZE = 10
@@ -45,15 +51,15 @@ def build_buttons(offset: int) -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton("⟳ Refresh", callback_data=f"leaderboard_users_{offset}"),
-            InlineKeyboardButton("⌕ Find", callback_data="leaderboard_users_find")
+            InlineKeyboardButton("⌕ Find", callback_data="leaderboard_users_find"),
         ],
         [
             InlineKeyboardButton("⌫ Clear", callback_data="leaderboard_users_clear"),
-            InlineKeyboardButton("⟶ Next", callback_data=f"leaderboard_users_{offset + PAGE_SIZE}")
+            InlineKeyboardButton("⟶ Next", callback_data=f"leaderboard_users_{offset + PAGE_SIZE}"),
         ],
         [
-            InlineKeyboardButton("« Prev", callback_data=f"leaderboard_users_{max(0, offset - PAGE_SIZE)}")
-        ]
+            InlineKeyboardButton("« Prev", callback_data=f"leaderboard_users_{max(0, offset - PAGE_SIZE)}"),
+        ],
     ]
     return InlineKeyboardMarkup(buttons)
 
@@ -68,7 +74,7 @@ async def leaderboard_command(client, message):
         photo=IMAGE_URL,
         caption=text,
         parse_mode="html",
-        reply_markup=buttons
+        reply_markup=buttons,
     )
 
 
@@ -99,7 +105,7 @@ async def leaderboard_callback(client, callback_query: CallbackQuery):
 
             await callback_query.message.edit_media(
                 media=InputMediaPhoto(media=IMAGE_URL, caption=text, parse_mode="html"),
-                reply_markup=buttons
+                reply_markup=buttons,
             )
         except Exception:
             await callback_query.message.reply_text("Timeout or error occurred. Please try again.")
@@ -111,7 +117,6 @@ async def leaderboard_callback(client, callback_query: CallbackQuery):
         await callback_query.message.delete()
         return
 
-    # Pagination handler
     parts = data.split("_")
     offset = int(parts[-1]) if parts[-1].isdigit() else 0
 
@@ -120,5 +125,5 @@ async def leaderboard_callback(client, callback_query: CallbackQuery):
 
     await callback_query.message.edit_media(
         media=InputMediaPhoto(media=IMAGE_URL, caption=text, parse_mode="html"),
-        reply_markup=buttons
+        reply_markup=buttons,
     )
