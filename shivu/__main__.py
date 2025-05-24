@@ -4,7 +4,8 @@ import random
 import re
 import asyncio
 from html import escape 
-
+from threading import Thread
+from flask import Flask
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 from telegram import Update
@@ -14,6 +15,14 @@ from shivu import collection, top_global_groups_collection, group_user_totals_co
 from shivu import application, SUPPORT_CHAT, UPDATE_CHAT, db, LOGGER
 from shivu.modules import ALL_MODULES
 
+flask_app = Flask(__name__)
+
+@flask_app.route("/")
+def index():
+    return "Shivu Daemon Running on 7860"
+
+def run_flask():
+    flask_app.run(host="0.0.0.0", port=7860, debug=False, use_reloader=False)
 
 locks = {}
 message_counters = {}
@@ -244,7 +253,10 @@ def main() -> None:
     application.run_polling(drop_pending_updates=True)
     
 if __name__ == "__main__":
+    flask_thread = Thread(target=run_flask)
+    flask_thread.daemon = True
+    flask_thread.start()
+
     shivuu.start()
     LOGGER.info("Bot started")
     main()
-
