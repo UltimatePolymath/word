@@ -1,158 +1,151 @@
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-from shivu import sudo, OWNER_ID, shivuu
-from pymongo import ReturnDocument
+from shivu import shivuu, sudo, OWNER_ID
+from pymongo import UpdateOne
 
-PREVIEW_IMAGE = "https://i.ibb.co/M5ShPN50/tmpgr3gsx2o.jpg"
+PREVIEW_IMG = "https://i.ibb.co/M5ShPN50/tmpgr3gsx2o.jpg"
 
-ROLES = ["owner", "sudo", "uploader"]
-ROLE_SYMBOLS = {
-    "owner": "◉",
-    "sudo": "⟜",
-    "uploader": "⋇"
-}
-BUTTON_LABELS = {
-    "appoint": "⟴ appoint",
-    "discard": "⊘ discard",
-    "back": "← back",
+SYMBOLS = {
+    "appoint": "⟜",
+    "discard": "⊘",
+    "owner": "≡",
+    "sudo": "⊠",
+    "uploader": "⊡",
+    "view": "⋗",
+    "back": "↻"
 }
 
-def format_smallcaps(text: str) -> str:
-    return ''.join(chr(0x1D5BA + ord(c.lower()) - ord('a')) if c.isalpha() else c for c in text)
 
-def role_key(role): return f"{role}_by"
+def smallcaps(text: str) -> str:
+    table = str.maketrans("abcdefghijklmnopqrstuvwxyz", "ᴀʙᴄᴅᴇғɢʜɪᴊᴋʟᴍɴᴏᴘǫʀsᴛᴜᴠᴡxʏᴢ")
+    return text.lower().translate(table)
 
-def get_role_doc(user_id):
-    return sudo.find_one({"user_id": user_id})
 
-async def is_allowed(issuer_id: int, target_role: str) -> bool:
-    if issuer_id == OWNER_ID:
-        return True
-    issuer_data = await sudo.find_one({"user_id": issuer_id})
-    if not issuer_data:
-        return False
-    if target_role == "owner":
-        return False
-    if target_role == "sudo" and "owner" in issuer_data.get("roles", []):
-        return True
-    if target_role == "uploader" and "sudo" in issuer_data.get("roles", []):
-        return True
-    return False
+async def get_roles(user_id: int) -> list:
+    doc = await sudo.find_one({"user_id": user_id})
+    return doc.get("roles", []) if doc else []
 
-def build_roles_text(user_data):
-    lines = []
-    for role in ROLES:
-        if role in user_data.get("roles", []):
-            lines.append(f"{ROLE_SYMBOLS[role]} {format_smallcaps(role)}  — appointed by `{user_data.get(role_key(role), 'unknown')}`")
-    return "\n".join(lines) or "no roles assigned."
 
-def build_inline_buttons(user_id, appoint_mode=True):
-    buttons = []
-    temp_row = []
-    for idx, role in enumerate(ROLES):
-        action = "appoint" if appoint_mode else "discard"
-        label = f"{ROLE_SYMBOLS[role]} {format_smallcaps(role)}"
-        data = f"{action}:{role}:{user_id}"
-        temp_row.append(InlineKeyboardButton(label, callback_data=data))
-        if len(temp_row) == 2:
-            buttons.append(temp_row)
-            temp_row = []
-    if temp_row:
-        buttons.append(temp_row)
-    buttons.append([InlineKeyboardButton(BUTTON_LABELS["back"], callback_data=f"back:{user_id}")])
-    return buttons
-
-def build_role_view_buttons():
-    buttons = []
-    temp_row = []
-    for idx, role in enumerate(ROLES):
-        label = f"{ROLE_SYMBOLS[role]} {format_smallcaps(role)}s"
-        data = f"view:{role}"
-        temp_row.append(InlineKeyboardButton(label, callback_data=data))
-        if len(temp_row) == 2:
-            buttons.append(temp_row)
-            temp_row = []
-    if temp_row:
-        buttons.append(temp_row)
-    return buttons
-
-@shivuu.on_message(filters.command("sudo"))
-async def sudo_entry(c: Client, m: Message):
-    if not (await sudo.find_one({"user_id": m.from_user.id})) and m.from_user.id != OWNER_ID:
-        return await m.reply("you lack the clearance for this interface.")
-
-    if m.reply_to_message:
-        target = m.reply_to_message.from_user
-        user_data = await sudo.find_one({"user_id": target.id}) or {"user_id": target.id, "roles": []}
-        text = f"𓆩 {format_smallcaps('role profile')} 𓆪\n\n" \
-               f"for: `{target.id}` — {target.first_name}\n\n" + build_roles_text(user_data)
-
-        buttons = [
-            [InlineKeyboardButton(BUTTON_LABELS["appoint"], callback_data=f"panel:appoint:{target.id}"),
-             InlineKeyboardButton(BUTTON_LABELS["discard"], callback_data=f"panel:discard:{target.id}")]
-        ]
-        await m.reply_photo(PREVIEW_IMAGE, caption=text, reply_markup=InlineKeyboardMarkup(buttons))
-    else:
-        await m.reply_photo(
-            PREVIEW_IMAGE,
-            caption="𓆩 " + format_smallcaps("view role-holders") + " 𓆪",
-            reply_markup=InlineKeyboardMarkup(build_role_view_buttons())
-        )
-
-@shivuu.on_callback_query(filters.regex(r"^panel:(appoint|discard):(\d+)$"))
-async def open_action_panel(c: Client, cq: CallbackQuery):
-    action, uid = cq.data.split(":")[1:]
-    uid = int(uid)
-    appoint_mode = action == "appoint"
-    await cq.edit_message_caption(
-        f"𓆩 {format_smallcaps('select role')} to {action} 𓆪\n\nfor: `{uid}`",
-        reply_markup=InlineKeyboardMarkup(build_inline_buttons(uid, appoint_mode))
+async def add_role(user_id: int, role: str, appointed_by: int):
+    await sudo.update_one(
+        {"user_id": user_id},
+        {"$addToSet": {"roles": role}, "$setOnInsert": {"appointed_by": appointed_by}},
+        upsert=True
     )
 
-@shivuu.on_callback_query(filters.regex(r"^(appoint|discard):(\w+):(\d+)$"))
-async def handle_role_action(c: Client, cq: CallbackQuery):
-    action, role, uid = cq.data.split(":")
-    issuer_id = cq.from_user.id
-    uid = int(uid)
 
-    if not await is_allowed(issuer_id, role):
-        return await cq.answer("access denied for this action.", show_alert=True)
+async def remove_user(user_id: int):
+    await sudo.delete_one({"user_id": user_id})
 
-    existing = await sudo.find_one({"user_id": uid}) or {"user_id": uid, "roles": []}
 
-    if action == "appoint":
-        if role not in existing["roles"]:
-            existing["roles"].append(role)
-            existing[role_key(role)] = issuer_id
-            await sudo.replace_one({"user_id": uid}, existing, upsert=True)
-    else:
-        if role in existing["roles"]:
-            existing["roles"].remove(role)
-            existing.pop(role_key(role), None)
-            if existing["roles"]:
-                await sudo.replace_one({"user_id": uid}, existing)
-            else:
-                await sudo.delete_one({"user_id": uid})
+async def validate(actor_id: int, target_role: str) -> bool:
+    if actor_id == OWNER_ID:
+        return True
+    actor_roles = await get_roles(actor_id)
+    if target_role == "owner":
+        return False
+    if target_role == "sudo":
+        return "owner" in actor_roles
+    if target_role == "uploader":
+        return "sudo" in actor_roles
+    return False
 
-    text = f"𓆩 {format_smallcaps('updated role profile')} 𓆪\n\nfor: `{uid}`\n\n" + build_roles_text(existing)
-    await cq.edit_message_caption(text, reply_markup=InlineKeyboardMarkup(build_inline_buttons(uid, appoint_mode=True)))
 
-@shivuu.on_callback_query(filters.regex(r"^view:(\w+)$"))
-async def handle_view_role(c: Client, cq: CallbackQuery):
-    role = cq.data.split(":")[1]
-    cursor = sudo.find({ "roles": role })
-    users = await cursor.to_list(None)
-    lines = [f"{ROLE_SYMBOLS[role]} `{u['user_id']}` — {u.get(role_key(role), 'unknown')}" for u in users]
-    text = f"𓆩 {format_smallcaps(role)}s 𓆪\n\n" + ("\n".join(lines) if lines else "none found.")
-    await cq.edit_message_caption(text, reply_markup=InlineKeyboardMarkup(build_role_view_buttons()))
+def appoint_panel():
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(f"{SYMBOLS['owner']} {smallcaps('owner')}", callback_data="appoint:owner"),
+            InlineKeyboardButton(f"{SYMBOLS['sudo']} {smallcaps('sudo')}", callback_data="appoint:sudo")
+        ],
+        [
+            InlineKeyboardButton(f"{SYMBOLS['uploader']} {smallcaps('uploader')}", callback_data="appoint:uploader"),
+            InlineKeyboardButton(f"{SYMBOLS['discard']} {smallcaps('discard')}", callback_data="discard")
+        ],
+        [
+            InlineKeyboardButton(f"{SYMBOLS['back']} {smallcaps('back')}", callback_data="cancel")
+        ]
+    ])
 
-@shivuu.on_callback_query(filters.regex(r"^back:(\d+)$"))
-async def handle_back(c: Client, cq: CallbackQuery):
-    uid = int(cq.data.split(":")[1])
-    user_data = await sudo.find_one({"user_id": uid}) or {"user_id": uid, "roles": []}
-    text = f"𓆩 {format_smallcaps('role profile')} 𓆪\n\nfor: `{uid}`\n\n" + build_roles_text(user_data)
-    buttons = [
-        [InlineKeyboardButton(BUTTON_LABELS["appoint"], callback_data=f"panel:appoint:{uid}"),
-         InlineKeyboardButton(BUTTON_LABELS["discard"], callback_data=f"panel:discard:{uid}")]
-    ]
-    await cq.edit_message_caption(text, reply_markup=InlineKeyboardMarkup(buttons))
+
+def main_panel():
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(f"{SYMBOLS['view']} {smallcaps('owners')}", callback_data="view:owner"),
+            InlineKeyboardButton(f"{SYMBOLS['view']} {smallcaps('sudos')}", callback_data="view:sudo")
+        ],
+        [
+            InlineKeyboardButton(f"{SYMBOLS['view']} {smallcaps('uploaders')}", callback_data="view:uploader")
+        ]
+    ])
+
+
+@shivuu.on_message(filters.command("sudo") & filters.private)
+async def sudo_entry(client: Client, message: Message):
+    user_id = message.from_user.id
+    if not (user_id == OWNER_ID or "owner" in await get_roles(user_id) or "sudo" in await get_roles(user_id)):
+        return await message.reply_text("you lack proper clearance to access role management.")
+    
+    if message.reply_to_message:
+        replied = message.reply_to_message.from_user
+        await message.reply_photo(
+            PREVIEW_IMG,
+            caption=f"{smallcaps('target:')} <b>{replied.first_name}</b>\n{smallcaps('id:')} <code>{replied.id}</code>\n\n{smallcaps('choose an action below:')}",
+            reply_markup=appoint_panel()
+        )
+        return
+    
+    await message.reply_photo(
+        PREVIEW_IMG,
+        caption=f"{smallcaps('role access panel:')}",
+        reply_markup=main_panel()
+    )
+
+
+@shivuu.on_callback_query(filters.regex("appoint:(.*)"))
+async def appoint_handler(client: Client, callback: CallbackQuery):
+    role = callback.data.split(":")[1]
+    actor = callback.from_user.id
+    message = callback.message
+
+    if not message.reply_to_message:
+        return await callback.answer("no user to appoint.", show_alert=True)
+
+    target = message.reply_to_message.from_user.id
+    if not await validate(actor, role):
+        return await callback.answer("you can't appoint this role.", show_alert=True)
+
+    await add_role(target, role, actor)
+    await callback.answer(f"{role} role appointed.")
+
+
+@shivuu.on_callback_query(filters.regex("discard"))
+async def discard_handler(client: Client, callback: CallbackQuery):
+    actor = callback.from_user.id
+    message = callback.message
+
+    if not message.reply_to_message:
+        return await callback.answer("no user to discard.", show_alert=True)
+
+    target = message.reply_to_message.from_user.id
+    if actor != OWNER_ID:
+        doc = await sudo.find_one({"user_id": target})
+        if not doc or doc.get("appointed_by") != actor:
+            return await callback.answer("you can only discard users you appointed.", show_alert=True)
+
+    await remove_user(target)
+    await callback.answer("user removed.")
+
+
+@shivuu.on_callback_query(filters.regex("view:(.*)"))
+async def view_roles_handler(client: Client, callback: CallbackQuery):
+    role = callback.data.split(":")[1]
+    docs = sudo.find({"roles": role})
+    users = [f"{doc['user_id']}" async for doc in docs]
+
+    text = f"{smallcaps('current')} {role}s:\n" + '\n'.join([f"• <code>{uid}</code>" for uid in users]) if users else "no users with this role."
+    await callback.message.edit_text(text, reply_markup=main_panel())
+
+
+@shivuu.on_callback_query(filters.regex("cancel"))
+async def cancel_cb(client: Client, callback: CallbackQuery):
+    await callback.message.delete()
