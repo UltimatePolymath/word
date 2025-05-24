@@ -208,7 +208,7 @@ async def confirm_action(client: Client, query: CallbackQuery):
         action, role, target_id = (
             query.matches[0].group(1),
             query.matches[0].group(2),
-            int(query.matches[0].group(3))
+            int(query.matches[0].group(3)))
         
         if not await has_clearance(query.from_user.id, required_role=role):
             return await query.answer(INSUFFICIENT_PRIV, show_alert=True)
