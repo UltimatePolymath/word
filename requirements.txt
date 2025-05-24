@@ -10,3 +10,4 @@ tgcrypto
 python-dotenv
 cachetools 
 Flask
+pyromod
