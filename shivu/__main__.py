@@ -14,6 +14,10 @@ from telegram.ext import CommandHandler, CallbackContext, MessageHandler, filter
 from shivu import collection, top_global_groups_collection, group_user_totals_collection, user_collection, user_totals_collection, shivuu
 from shivu import application, SUPPORT_CHAT, UPDATE_CHAT, db, LOGGER
 from shivu.modules import ALL_MODULES
+from pyromod import listen
+
+# Patch listen method onto shivuu Client class
+shivuu.__class__.listen = listen
 import nest_asyncio
 nest_asyncio.apply()
 flask_app = Flask(__name__)
