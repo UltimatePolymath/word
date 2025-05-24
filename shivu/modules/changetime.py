@@ -3,7 +3,6 @@ from pyrogram.enums import ChatMemberStatus, ChatType
 from shivu import user_totals_collection, shivuu
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
-from pyromod.helpers import ikb
 
 ADMINS = [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]
 
@@ -25,12 +24,12 @@ async def spawn_panel(client: Client, message: Message):
         return await message.reply_text("Only admins can access the spawn panel.")
 
     panel_text = (
-        "╭━〔 𝕾𝖎𝖓 🎮 𝕾𝖕𝖆𝖜𝖓 𝕻𝖆𝖓𝖊𝖑 〕━╮\n"
+        "╭━〔 𝕾𝖎𝖓 🎃 𝕮𝖆𝖙𝖈𝖍𝖊𝖗 〕━╮\n"
         "  ✦ Welcome to the spawn panel ✦\n"
         "╰━━━━━━━━━━━━━━━━━━━━╯\n\n"
         "⤷ ⦿ 𝟱𝟬 ━ Per 50 messages\n"
         "⤷ ⦿ 𝟭𝟬𝟬 ━ Per 100 messages\n"
-        "⤷ ⦿ Custom ━ Set your own count (≥ 50)\n"
+        "⤷ ⦿ Custom ━ Set your own count (>50)\n"
         "⤷ ⦿ Showtime ━ View current count\n"
         "⤷ ⦿ Resettime ━ Reset to 100\n"
     )
@@ -45,11 +44,11 @@ async def spawn_panel(client: Client, message: Message):
 
     await message.reply_text(panel_text, reply_markup=buttons)
 
-@shivuu.on_callback_query(filters.regex("settime_"))
+
+@shivuu.on_callback_query(filters.regex(r"settime_"))
 async def handle_time_callbacks(client: Client, query):
     data = query.data.split("_")[1]
     chat_id = query.message.chat.id
-    user_id = query.from_user.id
 
     if data in ["50", "100"]:
         new_value = int(data)
@@ -77,8 +76,9 @@ async def handle_time_callbacks(client: Client, query):
 
     elif data == "custom":
         await query.message.edit_text("✍ Please enter your custom message count (must be ≥ 50):")
-        response: Message = await client.listen(query.message.chat.id)
+
         try:
+            response: Message = await client.listen(chat_id)  # <--- here is pyromod listen used properly
             value = int(response.text)
             if value < 50:
                 await query.message.reply_text("❌ Must be at least 50.")
