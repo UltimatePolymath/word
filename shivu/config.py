@@ -8,7 +8,7 @@ class Config(object):
     TOKEN = "7507037404:AAHQkZN9UPmIWGIR48QnOI2pn4IF8YsuZI8"
     mongo_url = "mongodb+srv://worker:TFqF209jhTbnWDAN@cluster0.if6ahq2.mongodb.net/?retryWrites=true&w=majority&tls=true&tlsAllowInvalidCertificates=true"
     PHOTO_URL = ["https://telegra.ph/file/b925c3985f0f325e62e17.jpg", "https://telegra.ph/file/4211fb191383d895dab9d.jpg"]
-    SUPPORT_CHAT = "Collect_em_support"
+    SUPPORT_CHAT = "+9y7_hAj6wpMyZGZl"
     UPDATE_CHAT = "Collect_em_support"
     BOT_USERNAME = "sincatcherbot"
     CHARA_CHANNEL_ID = "-1002133191051"
