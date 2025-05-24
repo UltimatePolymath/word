@@ -3,7 +3,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes
 from pyromod import listen
 
-from shivu import user_collection
+from shivu import user_collection, application 
 
 IMAGE_URL = "https://i.ibb.co/Zpcqv2p3/tmpepyoc31z.jpg"
 PAGE_SIZE = 10
