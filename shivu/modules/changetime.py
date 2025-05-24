@@ -35,8 +35,8 @@ async def spawn_panel(client: Client, message: Message):
     )
 
     buttons = InlineKeyboardMarkup([
-        [InlineKeyboardButton("➴ 𝟱𝟬", callback_data=f"settime_50"),
-         InlineKeyboardButton("➴ 𝟭𝟬𝟬", callback_data=f"settime_100")],
+        [InlineKeyboardButton("➴ 𝟱𝟬", callback_data="settime_50"),
+         InlineKeyboardButton("➴ 𝟭𝟬𝟬", callback_data="settime_100")],
         [InlineKeyboardButton("✎ Custom", callback_data="settime_custom"),
          InlineKeyboardButton("✧ Showtime", callback_data="settime_show")],
         [InlineKeyboardButton("↻ Resettime", callback_data="settime_reset")]
@@ -47,6 +47,7 @@ async def spawn_panel(client: Client, message: Message):
 
 @shivuu.on_callback_query(filters.regex(r"settime_"))
 async def handle_time_callbacks(client: Client, query):
+    await query.answer()  # Acknowledge the callback to remove loading state
     data = query.data.split("_")[1]
     chat_id = query.message.chat.id
 
@@ -78,10 +79,10 @@ async def handle_time_callbacks(client: Client, query):
         await query.message.edit_text("✍ Please enter your custom message count (must be ≥ 50):")
 
         try:
-            response: Message = await client.listen(chat_id)  # <--- here is pyromod listen used properly
+            response: Message = await client.listen(chat_id)
             value = int(response.text)
             if value < 50:
-                await query.message.reply_text("❌ Must be at least 50.")
+                await client.send_message(chat_id, "❌ Must be at least 50.")
                 return
             await user_totals_collection.find_one_and_update(
                 {"chat_id": str(chat_id)},
@@ -89,6 +90,6 @@ async def handle_time_callbacks(client: Client, query):
                 upsert=True,
                 return_document=ReturnDocument.AFTER
             )
-            await query.message.reply_text(f"✅ Custom spawn time set to {value} messages.")
+            await client.send_message(chat_id, f"✅ Custom spawn time set to {value} messages.")
         except ValueError:
-            await query.message.reply_text("❌ Invalid number.")
+            await client.send_message(chat_id, "❌ Invalid number.")
