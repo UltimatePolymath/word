@@ -9,9 +9,9 @@ class Config(object):
     mongo_url = "mongodb+srv://worker:TFqF209jhTbnWDAN@cluster0.if6ahq2.mongodb.net/?retryWrites=true&w=majority&tls=true&tlsAllowInvalidCertificates=true"
     PHOTO_URL = ["https://telegra.ph/file/b925c3985f0f325e62e17.jpg", "https://telegra.ph/file/4211fb191383d895dab9d.jpg"]
     SUPPORT_CHAT = "+9y7_hAj6wpMyZGZl"
-    UPDATE_CHAT = "Collect_em_support"
+    UPDATE_CHAT = "+2wCcFlLzGY83Nzll"
     BOT_USERNAME = "sincatcherbot"
-    CHARA_CHANNEL_ID = ""
+    CHARA_CHANNEL_ID = "-1002575869195"
     api_id = 26626068
     api_hash = "bf423698bcbe33cfd58b11c78c42caa2"
 
