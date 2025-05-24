@@ -76,7 +76,7 @@ def build_role_view_buttons():
         buttons.append(temp_row)
     return buttons
 
-@shivuu.on_message(filters.command("sudo") & filters.private)
+@shivuu.on_message(filters.command("sudo"))
 async def sudo_entry(c: Client, m: Message):
     if not (await sudo.find_one({"user_id": m.from_user.id})) and m.from_user.id != OWNER_ID:
         return await m.reply("you lack the clearance for this interface.")
