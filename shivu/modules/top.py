@@ -1,5 +1,6 @@
 import html
 from pyrogram import filters
+from pyrogram.enums import ParseMode
 from pyrogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -13,12 +14,11 @@ from shivu import shivuu, user_collection
 
 IMAGE_URL = "https://i.ibb.co/Zpcqv2p3/tmpepyoc31z.jpg"
 PAGE_SIZE = 10
-HEADER_SMALL_CAPS = "ᴛᴏᴘ ᴜꜱᴇʀꜱ ᴡɪᴛʜ ᴍᴏꜱᴛ ᴄʜᴀʀᴀᴄᴛᴇʀꜱ\n\n"
+HEADER_SMALL_CAPS = "ᴛᴏᴘ ᴜꜱᴇʀꜱ �ᴡɪᴛʜ ᴍᴏꜱᴛ ᴄʜᴀʀᴀᴄᴛᴇʀꜱ\n\n"
 
 
 async def build_leaderboard_text(offset: int = 0) -> str:
-    # Ensure offset is not negative
-    offset = max(0, offset)
+    offset = max(0, offset)  # Ensure offset is not negative
     
     cursor = user_collection.aggregate([
         {"$project": {
@@ -43,12 +43,9 @@ async def build_leaderboard_text(offset: int = 0) -> str:
             first_name = first_name[:15] + "..."
         character_count = user["character_count"]
         
-        # Handle users without username
-        if username:
-            line = f'{i}. <a href="https://t.me/{username}"><b>{first_name}</b></a> ➾ <b>{character_count}</b>'
-        else:
-            line = f'{i}. <b>{first_name}</b> ➾ <b>{character_count}</b>'
-        
+        line = (f'{i}. <a href="https://t.me/{username}"><b>{first_name}</b></a> ➾ <b>{character_count}</b>' 
+                if username else 
+                f'{i}. <b>{first_name}</b> ➾ <b>{character_count}</b>')
         lines.append(line)
 
     return f"<b>{HEADER_SMALL_CAPS}</b>" + "\n".join(lines)
@@ -65,11 +62,9 @@ def build_buttons(offset: int) -> InlineKeyboardMarkup:
         ]
     ]
     
-    # Add Next button only if there might be more results
     if offset > 0:
         buttons[1].insert(0, InlineKeyboardButton("« Prev", callback_data=f"leaderboard_users_{max(0, offset - PAGE_SIZE)}"))
     
-    # Always show Next button (we'll handle empty results in the callback)
     buttons[1].append(InlineKeyboardButton("⟶ Next", callback_data=f"leaderboard_users_{offset + PAGE_SIZE}"))
     
     return InlineKeyboardMarkup(buttons)
@@ -85,28 +80,30 @@ async def leaderboard_command(_, message: Message):
         photo=IMAGE_URL,
         caption=text,
         reply_markup=buttons,
-        parse_mode="html"
+        parse_mode=ParseMode.HTML
     )
 
 
 @shivuu.on_callback_query(filters.regex(r"^leaderboard_users"))
 async def leaderboard_callback(_, query: CallbackQuery):
+    await query.answer()  # Answer callback to stop loading animation
+    
     data = query.data
 
     if data == "leaderboard_users_find":
         await query.message.reply_text("Please enter the rank number you want to find (e.g. 15):")
 
         try:
-            response = await shivuu.listen(query.message.chat.id, timeout=30)
+            response = await shivuu.listen(query.message.chat.id, filters.text, timeout=30)
             rank_text = response.text.strip()
 
             if not rank_text.isdigit():
-                await query.message.reply_text("Invalid input. Please enter a number.")
+                await response.reply_text("Invalid input. Please enter a number.", quote=True)
                 return
 
             rank = int(rank_text)
             if rank < 1:
-                await query.message.reply_text("Rank must be at least 1.")
+                await response.reply_text("Rank must be at least 1.", quote=True)
                 return
 
             offset = ((rank - 1) // PAGE_SIZE) * PAGE_SIZE
@@ -114,7 +111,7 @@ async def leaderboard_callback(_, query: CallbackQuery):
             buttons = build_buttons(offset)
 
             await query.message.edit_media(
-                media=InputMediaPhoto(media=IMAGE_URL, caption=text, parse_mode="html"),
+                media=InputMediaPhoto(media=IMAGE_URL, caption=text, parse_mode=ParseMode.HTML),
                 reply_markup=buttons
             )
         except TimeoutError:
@@ -124,15 +121,16 @@ async def leaderboard_callback(_, query: CallbackQuery):
         return
 
     if data == "leaderboard_users_clear":
-        await query.message.edit_caption(caption="Leaderboard cleared.")
+        await query.message.edit_caption(
+            caption="Leaderboard cleared.",
+            parse_mode=ParseMode.HTML
+        )
         return
 
-    # Handle pagination and refresh
     try:
-        offset = int(data.rsplit("_", 1)[-1])
+        offset = int(data.split("_")[-1])
         text = await build_leaderboard_text(offset)
         
-        # Check if we got any results
         if "No more users to show" in text and offset > 0:
             offset = max(0, offset - PAGE_SIZE)
             text = await build_leaderboard_text(offset)
@@ -140,7 +138,7 @@ async def leaderboard_callback(_, query: CallbackQuery):
         buttons = build_buttons(offset)
 
         await query.message.edit_media(
-            media=InputMediaPhoto(media=IMAGE_URL, caption=text, parse_mode="html"),
+            media=InputMediaPhoto(media=IMAGE_URL, caption=text, parse_mode=ParseMode.HTML),
             reply_markup=buttons
         )
     except Exception as e:
