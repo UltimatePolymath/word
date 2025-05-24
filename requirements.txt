@@ -11,3 +11,4 @@ python-dotenv
 cachetools 
 Flask
 pyromod
+dnspython
