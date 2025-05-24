@@ -137,6 +137,5 @@ async def leaderboard_callback(update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-def register_user_leaderboard_handlers(application):
-    application.add_handler(CommandHandler("top", leaderboard_command))
-    application.add_handler(CallbackQueryHandler(leaderboard_callback, pattern=r"^leaderboard_users(_find|_clear|_\d+)$"))
+application.add_handler(CommandHandler("top", leaderboard_command))
+application.add_handler(CallbackQueryHandler(leaderboard_callback, pattern=r"^leaderboard_users(_find|_clear|_\d+)$"))
