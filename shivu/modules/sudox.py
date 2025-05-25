@@ -1,24 +1,4 @@
-r("⛔ This panel can only be closed by the user who opened it!", show_alert=True)
-        return
-
-    LOGGER.info(f"User {caller_id} closed sudo panel")
-    await query.message.delete()
-    await query.answer()
-
-# Register handlers
-application.add_handler(CommandHandler("initsuperuser", init_superuser, filters=filters.User(user_id=SUPERUSER_ID)))
-application.add_handler(CommandHandler("sudo_list", sudo_list, filters=filters.User(user_id=SUPERUSER_ID)))
-application.add_handler(CommandHandler("sudo", sudo_command, filters=filters.REPLY))
-application.add_handler(CallbackQueryHandler(sudo_panel, pattern=r"^sudo_panel:\d+:\d+$"))
-application.add_handler(CallbackQueryHandler(sudo_action, pattern=r"^sudo_(assign|revoke):\d+:.+:\d+$"))
-application.add_handler(CallbackQueryHandler(close_panel, pattern=r"^sudo_close:\d+$"))
-
-# Error handler
-async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Log errors caused by updates."""
-    LOGGER.error(f"Update {update} caused error: {context.error}", exc_info=context.error)
-
-application.add_error_handler(errorimport logging
+import logging
 import re
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
