@@ -1,6 +1,6 @@
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-from shivu import shivuu, sudo_collection
+from shivu import shivuu
 from shivu.sudo.db import get_user_role, set_user_role, remove_user_role, get_all_sudo_users
 from shivu.sudo.utils import can_manage_role, get_allowed_actions, SUPERUSER_ID
 
