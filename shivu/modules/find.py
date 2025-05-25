@@ -86,7 +86,7 @@ async def find_ids_callback(client: Client, callback_query):
 
         # Wait for user input using pyromod.listen
         response = await client.listen(
-            filters=filters.text & ~filters.command,
+            filters=filters.text & ~filters.command(),
             user_id=user_id,
             chat_id=chat_id,
             timeout=60
@@ -158,7 +158,7 @@ async def search_id_callback(client: Client, callback_query):
 
         # Wait for user input using pyromod.listen
         response = await client.listen(
-            filters=filters.text & ~filters.command,
+            filters=filters.text & ~filters.command(),
             user_id=user_id,
             chat_id=chat_id,
             timeout=60
