@@ -86,12 +86,18 @@ async def find_ids_callback(client: Client, callback_query):
 
         # Wait for user input using pyromod.listen
         response = await client.listen(
-            filters=filters.text & ~filters.command(),
+            filters=filters.text,
             user_id=user_id,
             chat_id=chat_id,
             timeout=60
         )
         name = response.text.strip()
+        if name.startswith('/'):
+            await response.reply_text(
+                "Please enter a character name, not a command.",
+                parse_mode=enums.ParseMode.MARKDOWN
+            )
+            return
         LOGGER.info(f"User {user_id} searched for character name: {name} in chat {chat_id}")
 
         # Search characters by name (case-insensitive, partial match)
@@ -158,12 +164,18 @@ async def search_id_callback(client: Client, callback_query):
 
         # Wait for user input using pyromod.listen
         response = await client.listen(
-            filters=filters.text & ~filters.command(),
+            filters=filters.text,
             user_id=user_id,
             chat_id=chat_id,
             timeout=60
         )
         char_id = response.text.strip()
+        if char_id.startswith('/'):
+            await response.reply_text(
+                "Please enter a character ID, not a command.",
+                parse_mode=enums.ParseMode.MARKDOWN
+            )
+            return
         LOGGER.info(f"User {user_id} searched for character ID: {char_id} in chat {chat_id}")
 
         # Validate character ID
