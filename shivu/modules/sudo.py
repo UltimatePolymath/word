@@ -1,7 +1,7 @@
 import logging
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-from shivu import shivuu, sudo, LOGGER
+from shivu import shivuu, sudo as sudo_collection, LOGGER
 
 # Role hierarchy
 ROLE_HIERARCHY = {
