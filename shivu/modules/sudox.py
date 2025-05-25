@@ -1,4 +1,5 @@
 import logging
+import re
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler, ContextTypes, filters
@@ -17,6 +18,12 @@ ROLE_HIERARCHY = {
 SUPERUSER_ID = 6783092268  # Hardcoded superuser ID
 PANEL_IMAGE = "https://i.ibb.co/M5ShPN50/tmpgr3gsx2o.jpg"
 
+# Utility to escape Markdown V2 special characters
+def escape_markdown_v2(text: str) -> str:
+    """Escape special characters for Markdown V2."""
+    special_chars = r'([_\*\[\]\(\)\~`>\#\+\-\=\|\{\}\.\!])'
+    return re.sub(special_chars, r'\\\1', text)
+
 # Database operations
 async def get_user_role(user_id: int) -> str | None:
     """Fetch a user's role from the sudo collection."""
@@ -26,7 +33,7 @@ async def get_user_role(user_id: int) -> str | None:
         LOGGER.debug(f"Fetched role for user {user_id}: {role}")
         return role
     except Exception as e:
-        LOGGER.error(f"Failed to get user role for {user_id}: {e}")
+        LOGGER.error(f"Failed to get user role for {user_id}: {e}", exc_info=True)
         return None
 
 async def set_user_role(user_id: int, role: str) -> bool:
@@ -41,7 +48,7 @@ async def set_user_role(user_id: int, role: str) -> bool:
         LOGGER.debug(f"Set role {role} for user {user_id}: {'Success' if success else 'Failed'}")
         return success
     except Exception as e:
-        LOGGER.error(f"Failed to set role {role} for {user_id}: {e}")
+        LOGGER.error(f"Failed to set role {role} for {user_id}: {e}", exc_info=True)
         return False
 
 async def remove_user_role(user_id: int) -> bool:
@@ -52,7 +59,7 @@ async def remove_user_role(user_id: int) -> bool:
         LOGGER.debug(f"Removed role for user {user_id}: {'Success' if success else 'Failed'}")
         return success
     except Exception as e:
-        LOGGER.error(f"Failed to remove role for {user_id}: {e}")
+        LOGGER.error(f"Failed to remove role for {user_id}: {e}", exc_info=True)
         return False
 
 async def get_all_sudo_users() -> list[dict]:
@@ -62,7 +69,7 @@ async def get_all_sudo_users() -> list[dict]:
         LOGGER.debug(f"Fetched all sudo users: {len(users)} found")
         return users
     except Exception as e:
-        LOGGER.error(f"Failed to fetch all sudo users: {e}")
+        LOGGER.error(f"Failed to fetch all sudo users: {e}", exc_info=True)
         return []
 
 # Role logic and permissions
@@ -125,7 +132,7 @@ async def init_superuser(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await update.message.reply_text("✅ Superuser role initialized for ID 6783092268.")
     else:
         LOGGER.error(f"Failed to initialize superuser role for {SUPERUSER_ID}")
-        await update.message.reply_text("❌ Failed to initialize superuser role.")
+        await update.message.reply_text("❌ Failed to initialize superuser role. Check logs for details.")
 
 async def sudo_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """List all users with sudo roles."""
@@ -177,11 +184,15 @@ async def sudo_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     # Log target user details
     LOGGER.info(f"Target user: {target_id}, role: {target_role}")
 
+    # Create manual mention
+    target_name = escape_markdown_v2(target_user.first_name)
+    target_mention = f"[{target_name}](tg://user?id={target_id})"
+
     # Create inline panel with caller_id in callback data
     buttons = [[InlineKeyboardButton("⟪ Open the Panel ⟫", callback_data=f"sudo_panel:{target_id}:{caller_id}")]]
     await update.message.reply_photo(
         photo=PANEL_IMAGE,
-        caption=f"🔧 Sudo Panel for {target_user.mention}\nCurrent Role: {target_role or 'None'}",
+        caption=f"🔧 Sudo Panel for {target_mention}\nCurrent Role: {target_role or 'None'}",
         reply_markup=InlineKeyboardMarkup(buttons),
         parse_mode=ParseMode.MARKDOWN_V2
     )
@@ -294,7 +305,7 @@ async def sudo_action(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             )
         else:
             LOGGER.error(f"User {caller_id} failed to assign {role} to {target_id}")
-            await query.answer("❌ Failed to assign role!", show_alert=True)
+            await query.answer("❌ Failed to assign role! Check logs for details.", show_alert=True)
     elif action == "sudo_revoke":
         success = await remove_user_role(target_id)
         if success:
@@ -306,7 +317,7 @@ async def sudo_action(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             )
         else:
             LOGGER.error(f"User {caller_id} failed to revoke role from {target_id}")
-            await query.answer("❌ Failed to revoke role!", show_alert=True)
+            await query.answer("❌ Failed to revoke role! Check logs for details.", show_alert=True)
 
     await query.answer()
 
