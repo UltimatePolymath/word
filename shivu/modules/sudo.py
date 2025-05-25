@@ -1,7 +1,7 @@
 import logging
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-from shivu import shivuu,sudo as sudo_collection, LOGGER
+from shivu import shivuu, sudo_collection, LOGGER
 
 # Role hierarchy
 ROLE_HIERARCHY = {
@@ -77,6 +77,20 @@ def can_manage_role(caller_role: str | None, target_role: str) -> bool:
     LOGGER.debug(f"Can {caller_role} (level {caller_level}) manage {target_role} (level {target_level})? {can_manage}")
     return can_manage
 
+def can_manage_user(caller_role: str | None, target_role: str | None) -> bool:
+    """Check if the caller can manage a user with the target role."""
+    if caller_role is None:
+        LOGGER.debug("Caller has no role, cannot manage any user")
+        return False
+    if caller_role == "superuser":
+        LOGGER.debug("Superuser can manage any user")
+        return True
+    caller_level = ROLE_HIERARCHY.get(caller_role, -1)
+    target_level = ROLE_HIERARCHY.get(target_role, -1) if target_role else -1
+    can_manage = caller_level > target_level  # Changed to > to block equal roles
+    LOGGER.debug(f"Can {caller_role} (level {caller_level}) manage user with role {target_role} (level {target_level})? {can_manage}")
+    return can_manage
+
 def get_allowed_actions(caller_role: str | None) -> list[str]:
     """Return the roles a caller can assign/revoke based on their role."""
     if caller_role is None:
@@ -143,6 +157,12 @@ async def sudo_command(client: Client, message: Message):
     target_id = target_user.id
     target_role = await get_user_role(target_id)
     
+    # Check if caller can manage the target user
+    if not can_manage_user(caller_role, target_role):
+        LOGGER.warning(f"User {caller_id} (role: {caller_role}) cannot manage user {target_id} (role: {target_role})")
+        await message.reply_text(f"⛔ You cannot manage a user with role {target_role or 'None'}!")
+        return
+    
     # Log target user details
     LOGGER.info(f"Target user: {target_id}, role: {target_role}")
     
@@ -176,6 +196,13 @@ async def sudo_panel(client: Client, callback: CallbackQuery):
         return
     
     target_role = await get_user_role(target_id)
+    
+    # Check if caller can manage the target user
+    if not can_manage_user(caller_role, target_role):
+        LOGGER.warning(f"User {caller_id} (role: {caller_role}) cannot manage user {target_id} (role: {target_role})")
+        await callback.answer(f"⛔ You cannot manage a user with role {target_role or 'None'}!", show_alert=True)
+        return
+    
     allowed_actions = get_allowed_actions(caller_role)
     
     # Log panel access
@@ -225,10 +252,22 @@ async def sudo_action(client: Client, callback: CallbackQuery):
         await callback.answer("⛔ You don't have permission to perform this action!", show_alert=True)
         return
     
-    # Verify hierarchy
-    if not can_manage_role(caller_role, role):
-        LOGGER.warning(f"User {caller_id} (role: {caller_role}) attempted to manage {role} for {target_id} (not allowed)")
-        await callback.answer(f"⛔ You can't manage the {role} role!", show_alert=True)
+    target_role = await get_user_role(target_id)
+    
+    # Check if caller can manage the target user
+    if not can_manage_user(caller_role, target_role):
+        LOGGER.warning(f"User {caller_id} (role: {caller_role}) cannot manage user {target_id} (role: {target_role})")
+        await callback.answer(f"⛔ You cannot manage a user with role {target_role or 'None'}!", show_alert=True)
+        return
+    
+    # Verify hierarchy for the specific role being assigned/revoked
+    if action == "sudo_assign" and not can_manage_role(caller_role, role):
+        LOGGER.warning(f"User {caller_id} (role: {caller_role}) attempted to assign {role} to {target_id} (not allowed)")
+        await callback.answer(f"⛔ You can't assign the {role} role!", show_alert=True)
+        return
+    elif action == "sudo_revoke" and not can_manage_role(caller_role, target_role):
+        LOGGER.warning(f"User {caller_id} (role: {caller_role}) attempted to revoke {target_role} from {target_id} (not allowed)")
+        await callback.answer(f"⛔ You can't revoke the {target_role} role!", show_alert=True)
         return
     
     if action == "sudo_assign":
