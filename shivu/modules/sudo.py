@@ -2,7 +2,7 @@ from pyrogram import filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from shivu import application  # Telegram Application from init
 from shivu import shivuu  # Pyrogram client from init
-from shivu.config import OWNER_ID
+from shivu import OWNER_ID
 from shivu.sudo.constants import ROLES, ROLE_DISPLAY, SUPERUSER_ID, PREVIEW_IMAGE, PREVIEW_CAPTION
 from shivu.sudo.utils import (
     get_role, is_role, assign_role, remove_role,
