@@ -3,7 +3,6 @@ from shivu.config import OWNER_ID
 from .constants import SUPERUSER_ID, OWNER, SUDO, UPLOADER, ROLES
 from pyrogram.types import User
 from functools import wraps
-from pyrogram.errors import UserNotParticipant
 from pyrogram import Client, filters
 from pyrogram.types import Message
 
@@ -29,21 +28,27 @@ async def is_role(user_id: int, role: str) -> bool:
 def role_priority(role: str) -> int:
     """Defines role hierarchy levels. Higher is stronger."""
     return {
-        SUPERUSER_ID: 999,
         OWNER: 3,
         SUDO: 2,
         UPLOADER: 1,
     }.get(role, 0)
+
+async def user_is_above(actor_id: int, target_id: int) -> bool:
+    """Checks if actor has a higher role than target."""
+    if actor_id == target_id:
+        return False
+    actor_role = await get_role(actor_id)
+    target_role = await get_role(target_id)
+    return role_priority(actor_role) > role_priority(target_role)
 
 async def has_clearance(actor_id: int, target_role: str) -> bool:
     """Checks if actor has permission to appoint/remove target_role"""
     if actor_id == SUPERUSER_ID:
         return True
     actor_role = await get_role(actor_id)
-
     if actor_role == OWNER:
         return target_role in [SUDO, UPLOADER]
-    elif actor_role == SUDO:
+    if actor_role == SUDO:
         return target_role == UPLOADER
     return False
 
