@@ -2,7 +2,8 @@ from pyrogram import filters
 from pyrogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from shivu import shivuu
 from shivu.sudo.constants import SUPERUSER_ID, ROLE_DISPLAY, PREVIEW_IMAGE, PREVIEW_CAPTION
-from shivu.sudo.utils import get_role, has_clearance, can_remove, assign_role, remove_role
+from shivu.sudo.utils import get_role, has_clearance, can_remove
+from shivu.sudo.db import assign_role, remove_role
 
 # Entry point command
 @shivuu.on_message(filters.command("sudo") & filters.group)
