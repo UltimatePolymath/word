@@ -3,7 +3,7 @@ from pyrogram.enums import ParseMode
 from pyrogram.types import Message
 
 from shivu import shivuu
-from shivu.archive.kairoz import get_user_kairoz_balance, create_kairoz_user
+from shivu.archive.coin import get_user_coin_balance, create_user_coin_doc
 
 KAIROZ_SYMBOL = "₭"
 
@@ -11,18 +11,15 @@ KAIROZ_SYMBOL = "₭"
 async def kairoz_cmd(_, message: Message):
     user_id = message.from_user.id
 
-    user_data = await get_user_kairoz_balance(user_id)
-    if user_data is None:
-        await create_kairoz_user(user_id)
-        await message.reply_text(
-            "***You're not initialized yet. Please use /start to begin.***",
-            parse_mode=ParseMode.MARKDOWN
-        )
-        return
+    # Ensure user document exists
+    await create_user_coin_doc(user_id)
 
-    balance = await get_user_kairoz_balance(user_id)
+    # Get coin balances
+    balance = await get_user_coin_balance(user_id)
+    kairoz = balance.get("Kairoz", 0)
+
     await message.reply_text(
-        f"**Current [K](https://i.ibb.co/ymvNjsTs/tmpyx38ufcs.jpg)airoz Balance:** `{KAIROZ_SYMBOL}{balance:,}`",
+        f"**Current Kairoz Balance:** `{KAIROZ_SYMBOL}{kairoz:,}[.](https://i.ibb.co/ymvNjsTs/tmpyx38ufcs.jpg)`",
         parse_mode=ParseMode.MARKDOWN,
         disable_web_page_preview=False
     )
