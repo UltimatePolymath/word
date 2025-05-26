@@ -14,7 +14,6 @@ import shivu.modules.sudo
 from shivu import collection, top_global_groups_collection, group_user_totals_collection, user_collection, user_totals_collection, shivuu
 from shivu import application, SUPPORT_CHAT, UPDATE_CHAT, db, LOGGER
 from shivu.modules import ALL_MODULES
-from shivu.sin.currency import currency_plugs
 # Patch listen method onto shivuu Client class
 import nest_asyncio
 nest_asyncio.apply()
@@ -27,7 +26,6 @@ def index():
 def run_flask():
     flask_app.run(host="0.0.0.0", port=7860, debug=False, use_reloader=False)
 
-load_sin()
 
 locks = {}
 message_counters = {}
