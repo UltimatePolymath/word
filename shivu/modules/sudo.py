@@ -1,7 +1,7 @@
 import logging
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, filters
-from shivu import application, sudo as sudo_collection
+from shivu import application as app, sudo as sudo_collection
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
