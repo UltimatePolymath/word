@@ -3,8 +3,7 @@ from pyrogram.types import Message
 from pyrogram.enums import ParseMode
 
 from shivu import shivuu
-from shivu.archive.coin import get_user_nectrozz_balance
-from shivu import coin as coin_collection
+from shivu.archive.coin import get_user_coin_balance, create_user_coin_doc
 
 # Helper to format bold italic
 def bold_italic(text: str) -> str:
@@ -14,12 +13,11 @@ def bold_italic(text: str) -> str:
 async def show_nectrozz_balance(_, message: Message):
     user_id = message.from_user.id
 
-    # Check if user exists in the coin collection
-    user_data = await coin_collection.find_one({"_id": user_id})
-    if not user_data:
-        return await message.reply_text("Please use /start first to initialize your profile.")
+    # Ensure user document exists
+    await create_user_coin_doc(user_id)
 
-    balance = await get_user_nectrozz_balance(user_id)
-    amount = balance.get("amount", 0) if isinstance(balance, dict) else balance
+    # Get balance using unified coin handler
+    balance = await get_user_coin_balance(user_id)
+    amount = balance.get("Nectrozz", 0)
     text = bold_italic(f"Current Balance: ₦{amount:,}")
     await message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
