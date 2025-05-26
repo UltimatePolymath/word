@@ -47,14 +47,21 @@ async def start(update: Update, context: CallbackContext) -> None:
     elif user_data['first_name'] != first_name or user_data['username'] != username:
         await collection.update_one({"_id": user_id}, {"$set": {"first_name": first_name, "username": username}})
 
-    # Initialize user's coin data
+    # Initialize sin's make
     await create_user_coin_doc(user_id)
 
-    # Reply with bold Markdown message and buttons
-    await update.message.reply_text(
-        text=f"**{caption_main}**",
-        parse_mode='Markdown',
+    # Send photo with inline buttons
+    await context.bot.send_photo(
+        chat_id=update.effective_chat.id,
+        photo="https://i.ibb.co/k61RdYyz/tmporofsr6m.jpg",
+        caption=caption_main,
         reply_markup=buttons_main
+    )
+
+    # Send bold reply message
+    await update.message.reply_text(
+        "**Welcome! Use the menu above to get started.**",
+        parse_mode='Markdown'
     )
 
 async def button(update: Update, context: CallbackContext) -> None:
