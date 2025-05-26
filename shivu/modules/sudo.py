@@ -319,7 +319,7 @@ async def handle_close_panel_callback(update: Update, context: ContextTypes.DEFA
     await callback.answer()
 
 # Register Handlers
-    """Register all command and callback query handlers.""
+"""Register all command and callback query handlers."""
 app.add_handler(CommandHandler("initsuperuser", handle_init_superuser, filters=filters.User(user_id=SUPERUSER_ID)))
 app.add_handler(CommandHandler("sudo_list", handle_list_sudo_users, filters=filters.User(user_id=SUPERUSER_ID)))
 app.add_handler(CommandHandler("sudo", handle_sudo_panel))
