@@ -19,7 +19,7 @@ async def kairoz_cmd(_, message: Message):
     kairoz = balance.get("Kairoz", 0)
 
     await message.reply_text(
-        f"**Current Kairoz Balance:** `{KAIROZ_SYMBOL}{kairoz:,}[.](https://i.ibb.co/ymvNjsTs/tmpyx38ufcs.jpg)`",
-        parse_mode=ParseMode.MARKDOWN,
-        disable_web_page_preview=False
+    f"**Current Kairoz Balance:** `{KAIROZ_SYMBOL}{kairoz:,}`[.](https://i.ibb.co/ymvNjsTs/tmpyx38ufcs.jpg)",
+    parse_mode=ParseMode.MARKDOWN,
+    disable_web_page_preview=False
     )
