@@ -1,6 +1,6 @@
 import logging
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from shivu import application, sudo as sudo_collection
 
 # Configure logging
@@ -170,7 +170,7 @@ async def handle_sudo_panel(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     await context.bot.send_photo(
         chat_id=update.effective_chat.id,
         photo=PANEL_IMAGE,
-        caption=f"🔧 Sudo Panel for {target_user.mention}\nCurrent Role: {target_role or 'None'}",
+        caption=f"🔧 Sudo Panel for @{target_user.username or target_user.first_name}\nCurrent Role: {target_role or 'None'}",
         reply_markup=InlineKeyboardMarkup(buttons)
     )
 
@@ -300,7 +300,7 @@ def register_handlers(app: Application) -> None:
     """Register all command and callback query handlers."""
     app.add_handler(CommandHandler("initsuperuser", handle_init_superuser, filters=filters.User(user_id=SUPERUSER_ID)))
     app.add_handler(CommandHandler("sudo_list", handle_list_sudo_users, filters=filters.User(user_id=SUPERUSER_ID)))
-    app.add_handler(MessageHandler(filters.COMMAND & filters.REPLY & filters.Regex(r"^sudo$"), handle_sudo_panel))
+    app.add_handler(CommandHandler("sudo", handle_sudo_panel))  # Simplified to CommandHandler
     app.add_handler(CallbackQueryHandler(handle_sudo_panel_callback, pattern=r"^sudo_panel:(\d+):(\d+)$"))
     app.add_handler(CallbackQueryHandler(handle_sudo_action_callback, pattern=r"^sudo_(assign|revoke):(\d+):(.+):(\d+)$"))
     app.add_handler(CallbackQueryHandler(handle_close_panel_callback, pattern=r"^sudo_close:(\d+)$"))
