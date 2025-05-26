@@ -18,7 +18,7 @@ ROLE_HIERARCHY = {
 SUPERUSER_ID = 6783092268
 PANEL_IMAGE = "https://i.ibb.co/M5ShPN50/tmpgr3gsx2o.jpg"
 
-# Database Operations (unchanged)
+# Database Operations
 async def db_fetch_user_role(user_id: int) -> str | None:
     """Fetch a user's role from the sudo collection."""
     try:
@@ -66,7 +66,7 @@ async def db_list_sudo_users() -> list[dict]:
         logger.error(f"Error fetching sudo users: {e}")
         return []
 
-# Role Logic and Permissions (unchanged)
+# Role Logic and Permissions
 def perm_can_manage_role(caller_role: str | None, target_role: str) -> bool:
     """Check if caller can manage the target role based on hierarchy."""
     if caller_role is None:
@@ -178,8 +178,17 @@ async def handle_sudo_panel(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 async def handle_sudo_panel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle sudo panel interactions."""
     callback = update.callback_query
+    logger.info(f"Callback received: data={callback.data}")
+
     caller_id = callback.from_user.id
-    target_id, panel_owner_id = map(int, callback.data.split(":")[1:3])
+    try:
+        target_id, panel_owner_id = map(int, callback.data.split(":")[1:3])
+    except (ValueError, IndexError) as e:
+        logger.error(f"Invalid callback data format: {callback.data}, error: {e}")
+        await callback.answer(text="❌ Invalid callback data!", show_alert=True)
+        return
+
+    logger.info(f"Sudo panel callback: caller_id={caller_id}, target_id={target_id}, panel_owner_id={panel_owner_id}")
 
     if caller_id != panel_owner_id:
         logger.warning(f"User {caller_id} attempted to access panel owned by {panel_owner_id}")
@@ -187,6 +196,8 @@ async def handle_sudo_panel_callback(update: Update, context: ContextTypes.DEFAU
         return
 
     caller_role = await db_fetch_user_role(caller_id)
+    logger.debug(f"Caller {caller_id} role: {caller_role}")
+
     if caller_role not in ["superuser", "owner", "sudo"] and caller_id != SUPERUSER_ID:
         logger.warning(f"User {caller_id} denied access to sudo panel")
         await callback.answer(text="⛔ You don't have permission to open this panel!", show_alert=True)
@@ -225,9 +236,15 @@ async def handle_sudo_panel_callback(update: Update, context: ContextTypes.DEFAU
 async def handle_sudo_action_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle assign/revoke role actions."""
     callback = update.callback_query
+    logger.info(f"Callback received: data={callback.data}")
     caller_id = callback.from_user.id
-    action, target_id, role, panel_owner_id = callback.data.split(":")
-    target_id, panel_owner_id = int(target_id), int(panel_owner_id)
+    try:
+        action, target_id, role, panel_owner_id = callback.data.split(":")
+        target_id, panel_owner_id = int(target_id), int(panel_owner_id)
+    except (ValueError, IndexError) as e:
+        logger.error(f"Invalid callback data format: {callback.data}, error: {e}")
+        await callback.answer(text="❌ Invalid callback data!", show_alert=True)
+        return
 
     if caller_id != panel_owner_id:
         logger.warning(f"User {caller_id} attempted to perform {action} on panel owned by {panel_owner_id}")
@@ -283,8 +300,14 @@ async def handle_sudo_action_callback(update: Update, context: ContextTypes.DEFA
 async def handle_close_panel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Close the sudo panel."""
     callback = update.callback_query
+    logger.info(f"Callback received: data={callback.data}")
     caller_id = callback.from_user.id
-    panel_owner_id = int(callback.data.split(":")[1])
+    try:
+        panel_owner_id = int(callback.data.split(":")[1])
+    except (ValueError, IndexError) as e:
+        logger.error(f"Invalid callback data format: {callback.data}, error: {e}")
+        await callback.answer(text="❌ Invalid callback data!", show_alert=True)
+        return
 
     if caller_id != panel_owner_id:
         logger.warning(f"User {caller_id} attempted to close panel owned by {panel_owner_id}")
@@ -300,7 +323,7 @@ def register_handlers(app: Application) -> None:
     """Register all command and callback query handlers."""
     app.add_handler(CommandHandler("initsuperuser", handle_init_superuser, filters=filters.User(user_id=SUPERUSER_ID)))
     app.add_handler(CommandHandler("sudo_list", handle_list_sudo_users, filters=filters.User(user_id=SUPERUSER_ID)))
-    app.add_handler(CommandHandler("sudo", handle_sudo_panel))  # Simplified to CommandHandler
+    app.add_handler(CommandHandler("sudo", handle_sudo_panel))
     app.add_handler(CallbackQueryHandler(handle_sudo_panel_callback, pattern=r"^sudo_panel:(\d+):(\d+)$"))
     app.add_handler(CallbackQueryHandler(handle_sudo_action_callback, pattern=r"^sudo_(assign|revoke):(\d+):(.+):(\d+)$"))
     app.add_handler(CallbackQueryHandler(handle_close_panel_callback, pattern=r"^sudo_close:(\d+)$"))
