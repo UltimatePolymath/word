@@ -1,5 +1,6 @@
 import logging
 from motor.motor_asyncio import AsyncIOMotorClient
+from shivu.sin.make import initialize_user as make  # Declared make here
 
 # =========================
 # Logging Setup
@@ -15,15 +16,15 @@ LOGGER = logging.getLogger(__name__)
 # =========================
 # Currency MongoDB Setup
 # =========================
-CURRENCY_MONGO_URL = "mongodb+srv://worker:TFqF209jhTbnWDAN@cluster0.if6ahq2.mongodb.net/?retryWrites=true&w=majority&tls=true&tlsAllowInvalidCertificates=true"
+CURRENCY_MONGO_URL = (
+    "mongodb+srv://worker:TFqF209jhTbnWDAN@cluster0.if6ahq2.mongodb.net/"
+    "?retryWrites=true&w=majority&tls=true&tlsAllowInvalidCertificates=true"
+)
 
 currency_client = AsyncIOMotorClient(CURRENCY_MONGO_URL)
 currency_db = currency_client["currency_database"]
 
 # =========================
-# (Future) Other Modules Setup
+# make function reference (central user initializer)
 # =========================
-# Example:
-# GAME_MONGO_URL = "mongodb+srv://...<game_credentials>..."
-# game_client = AsyncIOMotorClient(GAME_MONGO_URL)
-# game_db = game_client["game_database"]
+make = make  # Explicitly declared for external use
