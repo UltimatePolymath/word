@@ -8,7 +8,7 @@ from shivu import coin as coin_collection
 
 # Helper to format bold italic
 def bold_italic(text: str) -> str:
-    return f"*_{text}_*"
+    return f"***`{text}`***"
 
 @shivuu.on_message(filters.command("nectrozz"))
 async def show_nectrozz_balance(_, message: Message):
@@ -20,5 +20,6 @@ async def show_nectrozz_balance(_, message: Message):
         return await message.reply_text("Please use /start first to initialize your profile.")
 
     balance = await get_user_nectrozz_balance(user_id)
-    text = bold_italic(f"Current Balance: ₦{balance:,}")
+    amount = balance.get("amount", 0) if isinstance(balance, dict) else balance
+    text = bold_italic(f"Current Balance: ₦{amount:,}")
     await message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
