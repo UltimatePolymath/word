@@ -1,4 +1,5 @@
 import logging
+import re
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, filters
 from shivu import application as app, sudo as sudo_collection
@@ -174,11 +175,11 @@ async def handle_sudo_panel(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         reply_markup=InlineKeyboardMarkup(buttons)
     )
 
-# Callback Handlers
+# Callback Handlers with Logging
 async def handle_sudo_panel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle sudo panel interactions."""
     callback = update.callback_query
-    logger.info(f"Callback received: data={callback.data}")
+    logger.info(f"Handling sudo_panel callback: data={callback.data}")  # Added logging
 
     caller_id = callback.from_user.id
     try:
@@ -236,7 +237,7 @@ async def handle_sudo_panel_callback(update: Update, context: ContextTypes.DEFAU
 async def handle_sudo_action_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle assign/revoke role actions."""
     callback = update.callback_query
-    logger.info(f"Callback received: data={callback.data}")
+    logger.info(f"Handling sudo_action callback: data={callback.data}")  # Added logging
     caller_id = callback.from_user.id
     try:
         action, target_id, role, panel_owner_id = callback.data.split(":")
@@ -300,7 +301,7 @@ async def handle_sudo_action_callback(update: Update, context: ContextTypes.DEFA
 async def handle_close_panel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Close the sudo panel."""
     callback = update.callback_query
-    logger.info(f"Callback received: data={callback.data}")
+    logger.info(f"Handling sudo_close callback: data={callback.data}")  # Added logging
     caller_id = callback.from_user.id
     try:
         panel_owner_id = int(callback.data.split(":")[1])
@@ -318,6 +319,13 @@ async def handle_close_panel_callback(update: Update, context: ContextTypes.DEFA
     await callback.message.delete()
     await callback.answer()
 
+# Catch-All Callback Handler
+async def handle_unhandled_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle any unhandled callback queries."""
+    callback = update.callback_query
+    logger.warning(f"Unhandled callback query: data={callback.data}")
+    await callback.answer(text="❌ This action is not supported!", show_alert=True)
+
 # Register Handlers
 """Register all command and callback query handlers."""
 app.add_handler(CommandHandler("initsuperuser", handle_init_superuser, filters=filters.User(user_id=SUPERUSER_ID)))
@@ -326,4 +334,4 @@ app.add_handler(CommandHandler("sudo", handle_sudo_panel))
 app.add_handler(CallbackQueryHandler(handle_sudo_panel_callback, pattern=r"^sudo_panel:(\d+):(\d+)$"))
 app.add_handler(CallbackQueryHandler(handle_sudo_action_callback, pattern=r"^sudo_(assign|revoke):(\d+):(.+):(\d+)$"))
 app.add_handler(CallbackQueryHandler(handle_close_panel_callback, pattern=r"^sudo_close:(\d+)$"))
-
+app.add_handler(CallbackQueryHandler(handle_unhandled_callback))  # Catch-all handler added last
