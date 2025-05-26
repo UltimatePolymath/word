@@ -3,6 +3,10 @@ from shivu.sin import currency_db
 # Collection
 bal = currency_db["bal"]
 
+# Check if a user document already exists
+async def is_user_initialized(user_id: int) -> bool:
+    return await bal.find_one({"user_id": user_id}) is not None
+
 # Ensure a document exists for a user
 async def ensure_user(user_id: int):
     await bal.update_one(
