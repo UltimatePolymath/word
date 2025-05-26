@@ -5,6 +5,7 @@ from telegram.ext import CallbackContext, CallbackQueryHandler, CommandHandler
 
 from shivu import application, SUPPORT_CHAT, UPDATE_CHAT, BOT_USERNAME, db, GROUP_ID
 from shivu import pm_users as collection
+from shivu.archive.coin import create_user_coin_doc
 
 # Small caps converter
 def to_small_caps(text: str) -> str:
@@ -47,7 +48,7 @@ async def start(update: Update, context: CallbackContext) -> None:
         await collection.update_one({"_id": user_id}, {"$set": {"first_name": first_name, "username": username}})
 
     # Initialize sin's make
-    await make(user_id)
+    await create_user_coin_doc(user_id)
 
     await context.bot.send_photo(
         chat_id=update.effective_chat.id,
