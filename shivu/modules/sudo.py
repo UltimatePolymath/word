@@ -1,7 +1,7 @@
 import logging
-from pyrogram import Client, filters
-from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-from shivu import shivuu, sudo as sudo_collection
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+from shivu import application, sudo as sudo_collection
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -18,7 +18,7 @@ ROLE_HIERARCHY = {
 SUPERUSER_ID = 6783092268
 PANEL_IMAGE = "https://i.ibb.co/M5ShPN50/tmpgr3gsx2o.jpg"
 
-# Database Operations
+# Database Operations (unchanged)
 async def db_fetch_user_role(user_id: int) -> str | None:
     """Fetch a user's role from the sudo collection."""
     try:
@@ -66,7 +66,7 @@ async def db_list_sudo_users() -> list[dict]:
         logger.error(f"Error fetching sudo users: {e}")
         return []
 
-# Role Logic and Permissions
+# Role Logic and Permissions (unchanged)
 def perm_can_manage_role(caller_role: str | None, target_role: str) -> bool:
     """Check if caller can manage the target role based on hierarchy."""
     if caller_role is None:
@@ -112,81 +112,90 @@ def perm_get_allowed_roles(caller_role: str | None) -> list[str]:
     return actions
 
 # Command Handlers
-@shivuu.on_message(filters.command("initsuperuser") & filters.user(SUPERUSER_ID))
-async def handle_init_superuser(client: Client, message: Message):
+async def handle_init_superuser(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Initialize superuser role for ID 6783092268."""
+    caller_id = update.effective_user.id
+    if caller_id != SUPERUSER_ID:
+        logger.warning(f"User {caller_id} denied access to /initsuperuser")
+        await update.message.reply_text("⛔ You don't have permission to use this command!")
+        return
+
     success = await db_update_user_role(SUPERUSER_ID, "superuser")
     response = "✅ Superuser role initialized for ID 6783092268." if success else "❌ Failed to initialize superuser role."
     logger.info(f"Superuser initialization for {SUPERUSER_ID}: {'Success' if success else 'Failed'}")
-    await message.reply_text(response)
+    await update.message.reply_text(response)
 
-@shivuu.on_message(filters.command("sudo_list") & filters.user(SUPERUSER_ID))
-async def handle_list_sudo_users(client: Client, message: Message):
+async def handle_list_sudo_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """List all users with sudo roles."""
+    caller_id = update.effective_user.id
+    if caller_id != SUPERUSER_ID:
+        logger.warning(f"User {caller_id} denied access to /sudo_list")
+        await update.message.reply_text("⛔ You don't have permission to use this command!")
+        return
+
     users = await db_list_sudo_users()
     if not users:
-        await message.reply_text("No users with sudo roles found.")
+        await update.message.reply_text("No users with sudo roles found.")
         return
     response = "Sudo Users:\n" + "\n".join(f"User ID: {user['user_id']}, Role: {user['role']}" for user in users)
-    await message.reply_text(response)
+    await update.message.reply_text(response)
 
-@shivuu.on_message(filters.command("sudo") & filters.reply)
-async def handle_sudo_panel(client: Client, message: Message):
+async def handle_sudo_panel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Open role management panel for a replied-to user."""
-    caller_id = message.from_user.id
+    caller_id = update.effective_user.id
     caller_role = await db_fetch_user_role(caller_id)
     logger.info(f"Sudo command by user {caller_id}, role: {caller_role}")
 
     if caller_role not in ["superuser", "owner", "sudo"] and caller_id != SUPERUSER_ID:
         logger.warning(f"User {caller_id} denied access to /sudo")
-        await message.reply_text("⛔ You don't have permission to use this command!")
+        await update.message.reply_text("⛔ You don't have permission to use this command!")
         return
 
-    reply_message = message.reply_to_message
-    if not reply_message.from_user:
-        logger.error(f"No valid user in replied message: chat_id={reply_message.chat.id}, message_id={reply_message.id}")
-        await message.reply_text("⛔ Please reply to a message from a valid user!")
+    if not update.message.reply_to_message or not update.message.reply_to_message.from_user:
+        logger.error(f"No valid user in replied message: chat_id={update.message.chat.id}, message_id={update.message.id}")
+        await update.message.reply_text("⛔ Please reply to a message from a valid user!")
         return
 
-    target_user = reply_message.from_user
+    target_user = update.message.reply_to_message.from_user
     target_id = target_user.id
     target_role = await db_fetch_user_role(target_id)
 
     if not perm_can_manage_user(caller_role, target_role):
         logger.warning(f"User {caller_id} (role: {caller_role}) cannot manage user {target_id} (role: {target_role})")
-        await message.reply_text(f"⛔ You cannot manage a user with role {target_role or 'None'}!")
+        await update.message.reply_text(f"⛔ You cannot manage a user with role {target_role or 'None'}!")
         return
 
     logger.info(f"Target user: {target_id}, role: {target_role}")
     buttons = [[InlineKeyboardButton("⟪ Open the Panel ⟫", callback_data=f"sudo_panel:{target_id}:{caller_id}")]]
-    await message.reply_photo(
+    await context.bot.send_photo(
+        chat_id=update.effective_chat.id,
         photo=PANEL_IMAGE,
         caption=f"🔧 Sudo Panel for {target_user.mention}\nCurrent Role: {target_role or 'None'}",
         reply_markup=InlineKeyboardMarkup(buttons)
     )
 
 # Callback Handlers
-@shivuu.on_callback_query(filters.regex(r"^sudo_panel:(\d+):(\d+)$"))
-async def handle_sudo_panel_callback(client: Client, callback: CallbackQuery):
+async def handle_sudo_panel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle sudo panel interactions."""
+    callback = update.callback_query
     caller_id = callback.from_user.id
     target_id, panel_owner_id = map(int, callback.data.split(":")[1:3])
 
     if caller_id != panel_owner_id:
         logger.warning(f"User {caller_id} attempted to access panel owned by {panel_owner_id}")
-        await callback.answer("⛔ This panel is only accessible by its creator!", show_alert=True)
+        await callback.answer(text="⛔ This panel is only accessible by its creator!", show_alert=True)
         return
 
     caller_role = await db_fetch_user_role(caller_id)
     if caller_role not in ["superuser", "owner", "sudo"] and caller_id != SUPERUSER_ID:
         logger.warning(f"User {caller_id} denied access to sudo panel")
-        await callback.answer("⛔ You don't have permission to open this panel!", show_alert=True)
+        await callback.answer(text="⛔ You don't have permission to open this panel!", show_alert=True)
         return
 
     target_role = await db_fetch_user_role(target_id)
     if not perm_can_manage_user(caller_role, target_role):
         logger.warning(f"User {caller_id} (role: {caller_role}) cannot manage user {target_id} (role: {target_role})")
-        await callback.answer(f"⛔ You cannot manage a user with role {target_role or 'None'}!", show_alert=True)
+        await callback.answer(text=f"⛔ You cannot manage a user with role {target_role or 'None'}!", show_alert=True)
         return
 
     allowed_actions = perm_get_allowed_roles(caller_role)
@@ -213,37 +222,37 @@ async def handle_sudo_panel_callback(client: Client, callback: CallbackQuery):
     )
     await callback.answer()
 
-@shivuu.on_callback_query(filters.regex(r"^sudo_(assign|revoke):(\d+):(.+):(\d+)$"))
-async def handle_sudo_action_callback(client: Client, callback: CallbackQuery):
+async def handle_sudo_action_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle assign/revoke role actions."""
+    callback = update.callback_query
     caller_id = callback.from_user.id
     action, target_id, role, panel_owner_id = callback.data.split(":")
     target_id, panel_owner_id = int(target_id), int(panel_owner_id)
 
     if caller_id != panel_owner_id:
         logger.warning(f"User {caller_id} attempted to perform {action} on panel owned by {panel_owner_id}")
-        await callback.answer("⛔ This panel is only accessible by its creator!", show_alert=True)
+        await callback.answer(text="⛔ This panel is only accessible by its creator!", show_alert=True)
         return
 
     caller_role = await db_fetch_user_role(caller_id)
     if caller_role not in ["superuser", "owner", "sudo"] and caller_id != SUPERUSER_ID:
         logger.warning(f"User {caller_id} denied access to sudo action")
-        await callback.answer("⛔ You don't have permission to perform this action!", show_alert=True)
+        await callback.answer(text="⛔ You don't have permission to perform this action!", show_alert=True)
         return
 
     target_role = await db_fetch_user_role(target_id)
     if not perm_can_manage_user(caller_role, target_role):
         logger.warning(f"User {caller_id} (role: {caller_role}) cannot manage user {target_id} (role: {target_role})")
-        await callback.answer(f"⛔ You cannot manage a user with role {target_role or 'None'}!", show_alert=True)
+        await callback.answer(text=f"⛔ You cannot manage a user with role {target_role or 'None'}!", show_alert=True)
         return
 
     if action == "sudo_assign" and not perm_can_manage_role(caller_role, role):
         logger.warning(f"User {caller_id} (role: {caller_role}) attempted to assign {role} to {target_id}")
-        await callback.answer(f"⛔ You can't assign the {role} role!", show_alert=True)
+        await callback.answer(text=f"⛔ You can't assign the {role} role!", show_alert=True)
         return
     elif action == "sudo_revoke" and not perm_can_manage_role(caller_role, target_role):
         logger.warning(f"User {caller_id} (role: {caller_role}) attempted to revoke {target_role} from {target_id}")
-        await callback.answer(f"⛔ You can't revoke the {target_role} role!", show_alert=True)
+        await callback.answer(text=f"⛔ You can't revoke the {target_role} role!", show_alert=True)
         return
 
     if action == "sudo_assign":
@@ -256,7 +265,7 @@ async def handle_sudo_action_callback(client: Client, callback: CallbackQuery):
             )
         else:
             logger.error(f"User {caller_id} failed to assign {role} to {target_id}")
-            await callback.answer("❌ Failed to assign role!", show_alert=True)
+            await callback.answer(text="❌ Failed to assign role!", show_alert=True)
     elif action == "sudo_revoke":
         success = await db_delete_user_role(target_id)
         if success:
@@ -267,21 +276,34 @@ async def handle_sudo_action_callback(client: Client, callback: CallbackQuery):
             )
         else:
             logger.error(f"User {caller_id} failed to revoke role from {target_id}")
-            await callback.answer("❌ Failed to revoke role!", show_alert=True)
+            await callback.answer(text="❌ Failed to revoke role!", show_alert=True)
     
     await callback.answer()
 
-@shivuu.on_callback_query(filters.regex(r"^sudo_close:(\d+)$"))
-async def handle_close_panel_callback(client: Client, callback: CallbackQuery):
+async def handle_close_panel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Close the sudo panel."""
+    callback = update.callback_query
     caller_id = callback.from_user.id
     panel_owner_id = int(callback.data.split(":")[1])
 
     if caller_id != panel_owner_id:
         logger.warning(f"User {caller_id} attempted to close panel owned by {panel_owner_id}")
-        await callback.answer("⛔ This panel can only be closed by its creator!", show_alert=True)
+        await callback.answer(text="⛔ This panel can only be closed by its creator!", show_alert=True)
         return
 
     logger.info(f"User {caller_id} closed sudo panel")
     await callback.message.delete()
     await callback.answer()
+
+# Register Handlers
+def register_handlers(app: Application) -> None:
+    """Register all command and callback query handlers."""
+    app.add_handler(CommandHandler("initsuperuser", handle_init_superuser, filters=filters.User(user_id=SUPERUSER_ID)))
+    app.add_handler(CommandHandler("sudo_list", handle_list_sudo_users, filters=filters.User(user_id=SUPERUSER_ID)))
+    app.add_handler(MessageHandler(filters.COMMAND & filters.REPLY & filters.Regex(r"^sudo$"), handle_sudo_panel))
+    app.add_handler(CallbackQueryHandler(handle_sudo_panel_callback, pattern=r"^sudo_panel:(\d+):(\d+)$"))
+    app.add_handler(CallbackQueryHandler(handle_sudo_action_callback, pattern=r"^sudo_(assign|revoke):(\d+):(.+):(\d+)$"))
+    app.add_handler(CallbackQueryHandler(handle_close_panel_callback, pattern=r"^sudo_close:(\d+)$"))
+
+# Register handlers with the application
+register_handlers(application)
