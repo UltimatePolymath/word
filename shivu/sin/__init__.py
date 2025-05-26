@@ -17,8 +17,7 @@ LOGGER = logging.getLogger(__name__)
 # Currency MongoDB Setup
 # =========================
 CURRENCY_MONGO_URL = (
-    "mongodb+srv://worker:TFqF209jhTbnWDAN@cluster0.if6ahq2.mongodb.net/"
-    "?retryWrites=true&w=majority&tls=true&tlsAllowInvalidCertificates=true"
+    "mongodb+srv://worker:TFqF209jhTbnWDAN@cluster0.if6ahq2.mongodb.net/?retryWrites=true&w=majority&tls=true&tlsAllowInvalidCertificates=true"
 )
 
 currency_client = AsyncIOMotorClient(CURRENCY_MONGO_URL)
