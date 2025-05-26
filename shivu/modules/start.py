@@ -46,6 +46,9 @@ async def start(update: Update, context: CallbackContext) -> None:
     elif user_data['first_name'] != first_name or user_data['username'] != username:
         await collection.update_one({"_id": user_id}, {"$set": {"first_name": first_name, "username": username}})
 
+    # Initialize sin's make
+    await make(user_id)
+
     await context.bot.send_photo(
         chat_id=update.effective_chat.id,
         photo="https://i.ibb.co/k61RdYyz/tmporofsr6m.jpg",
