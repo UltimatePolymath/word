@@ -319,14 +319,11 @@ async def handle_close_panel_callback(update: Update, context: ContextTypes.DEFA
     await callback.answer()
 
 # Register Handlers
-def register_handlers(app: Application) -> None:
-    """Register all command and callback query handlers."""
-    app.add_handler(CommandHandler("initsuperuser", handle_init_superuser, filters=filters.User(user_id=SUPERUSER_ID)))
-    app.add_handler(CommandHandler("sudo_list", handle_list_sudo_users, filters=filters.User(user_id=SUPERUSER_ID)))
-    app.add_handler(CommandHandler("sudo", handle_sudo_panel))
-    app.add_handler(CallbackQueryHandler(handle_sudo_panel_callback, pattern=r"^sudo_panel:(\d+):(\d+)$"))
-    app.add_handler(CallbackQueryHandler(handle_sudo_action_callback, pattern=r"^sudo_(assign|revoke):(\d+):(.+):(\d+)$"))
-    app.add_handler(CallbackQueryHandler(handle_close_panel_callback, pattern=r"^sudo_close:(\d+)$"))
+    """Register all command and callback query handlers.""
+app.add_handler(CommandHandler("initsuperuser", handle_init_superuser, filters=filters.User(user_id=SUPERUSER_ID)))
+app.add_handler(CommandHandler("sudo_list", handle_list_sudo_users, filters=filters.User(user_id=SUPERUSER_ID)))
+app.add_handler(CommandHandler("sudo", handle_sudo_panel))
+app.add_handler(CallbackQueryHandler(handle_sudo_panel_callback, pattern=r"^sudo_panel:(\d+):(\d+)$"))
+app.add_handler(CallbackQueryHandler(handle_sudo_action_callback, pattern=r"^sudo_(assign|revoke):(\d+):(.+):(\d+)$"))
+app.add_handler(CallbackQueryHandler(handle_close_panel_callback, pattern=r"^sudo_close:(\d+)$"))
 
-# Register handlers with the application
-register_handlers(application)
