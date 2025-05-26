@@ -11,10 +11,10 @@ from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 from telegram import Update
 from telegram.ext import CommandHandler, CallbackContext, MessageHandler, filters
 import shivu.modules.sudo
+import shivu.sin.currency.
 from shivu import collection, top_global_groups_collection, group_user_totals_collection, user_collection, user_totals_collection, shivuu
 from shivu import application, SUPPORT_CHAT, UPDATE_CHAT, db, LOGGER
 from shivu.modules import ALL_MODULES
-
 # Patch listen method onto shivuu Client class
 import nest_asyncio
 nest_asyncio.apply()
