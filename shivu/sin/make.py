@@ -1,4 +1,4 @@
-from shivu.sin import currency_plugs
+from shivu.sin.currency import currency_plugs
 
 async def initialize_user(user_id: int):
     """
