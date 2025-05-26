@@ -58,11 +58,6 @@ async def start(update: Update, context: CallbackContext) -> None:
         reply_markup=buttons_main
     )
 
-    # Send bold reply message
-    await update.message.reply_text(
-        "**Welcome! Use the menu above to get started.**",
-        parse_mode='Markdown'
-    )
 
 async def button(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
