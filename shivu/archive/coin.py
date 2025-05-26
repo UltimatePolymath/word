@@ -11,7 +11,7 @@ async def create_user_coin_doc(user_id: int):
         })
 
 # Get a user's coin data
-async def get_user_coins(user_id: int) -> dict:
+async def get_user_nectrozz_balance(user_id: int) -> dict:
     user = await coin.find_one({"_id": user_id})
     if not user:
         await create_user_coin_doc(user_id)
