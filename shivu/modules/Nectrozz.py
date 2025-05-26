@@ -8,7 +8,7 @@ from shivu import coin as coin_collection
 
 # Helper to format bold italic
 def bold_italic(text: str) -> str:
-    return f"***`{text}`***"
+    return f"**`{text}`**"
 
 @shivuu.on_message(filters.command("nectrozz"))
 async def show_nectrozz_balance(_, message: Message):
