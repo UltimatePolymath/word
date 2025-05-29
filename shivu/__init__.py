@@ -1,10 +1,8 @@
-import logging  
+import logging
 import os
-from pyrogram import Client 
-from telegram.ext import Application
-from motor.motor_asyncio import AsyncIOMotorClient
-import pyromod.listen
+from pyrogram import Client
 
+# Logging setup
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
     handlers=[logging.FileHandler("log.txt"), logging.StreamHandler()],
@@ -12,37 +10,19 @@ logging.basicConfig(
 )
 
 logging.getLogger("apscheduler").setLevel(logging.ERROR)
-logging.getLogger('httpx').setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("pyrate_limiter").setLevel(logging.ERROR)
 LOGGER = logging.getLogger(__name__)
 
-from shivu.config import Development as Config
+# Fetch configuration from environment (Hugging Face Secrets)
+API_ID = int(os.environ.get("API_ID", 0))
+API_HASH = os.environ.get("API_HASH", "")
+SESSION_STRING = os.environ.get("SESSION_STRING", "")
 
-
-api_id = Config.api_id
-api_hash = Config.api_hash
-TOKEN = Config.TOKEN
-GROUP_ID = Config.GROUP_ID
-CHARA_CHANNEL_ID = Config.CHARA_CHANNEL_ID 
-mongo_url = Config.mongo_url 
-PHOTO_URL = Config.PHOTO_URL 
-SUPPORT_CHAT = Config.SUPPORT_CHAT 
-UPDATE_CHAT = Config.UPDATE_CHAT
-BOT_USERNAME = Config.BOT_USERNAME 
-sudo_users = Config.sudo_users
-OWNER_ID = Config.OWNER_ID 
-
-application = Application.builder().token(TOKEN).build()
-shivuu = Client("Shivu", api_id, api_hash, bot_token=TOKEN)
-lol = AsyncIOMotorClient(mongo_url)
-db = lol['Character_catcher']
-collection = db['anime_characters_lol']
-user_totals_collection = db['user_totals_lmaoooo']
-user_collection = db["user_collection_lmaoooo"]
-group_user_totals_collection = db['group_user_totalsssssss']
-top_global_groups_collection = db['top_global_groups']
-pm_users = db['total_pm_users']
-sudo = db['sudo']
-coin = db['coin']
-xp_collection = db["xp"]
-rarity = db["rarity"]
+# Create Pyrogram Client using session string
+hax = Client(
+    name="sex",  # This is just the name of the session, not the string
+    api_id=API_ID,
+    api_hash=API_HASH,
+    session_string=SESSION_STRING
+)
