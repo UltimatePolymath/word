@@ -352,7 +352,7 @@ async def handle_game_message(client, message):
             if word and word.lower() not in used_words.get(chat_id, set()):
                 used_words[chat_id].add(word.lower())
                 await save_config()
-                await safe_send_message(LOG_CHAT_ID, f"Added word '{word}' to used_words in chat {chat_id} ({enabled_chats[chat_id]['name']})")
+                print(LOG_CHAT_ID, f"Added word '{word}' to used_words in chat {chat_id} ({enabled_chats[chat_id]['name']})")
     
     if message.text and re.match(prompt_pattern, message.text, re.MULTILINE):
         match = re.match(prompt_pattern, message.text, re.MULTILINE)
